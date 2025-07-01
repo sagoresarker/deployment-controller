@@ -1,0 +1,17 @@
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: password
+  name: deployment_controller
+  max_conns: 100
+
+server:
+  port: 8080
+  log_level: info
+
+security:
+  # Optional bearer token for API authentication
+  bearer_token: "your-secret-bearer-token"
+  # Encryption key for Docker credentials (must be 32 characters)
+  encryption_key: "your-32-character-encryption-key!!"

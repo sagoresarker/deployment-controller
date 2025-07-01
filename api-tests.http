@@ -1,0 +1,612 @@
+###
+# Deployment Controller API Tests
+# Use with REST Client extension in VS Code or similar HTTP clients
+###
+
+# Environment Variables
+@baseUrl = http://localhost:8089
+@contentType = application/json
+@bearerToken = your-secret-token
+
+### Health Check
+GET {{baseUrl}}/healthz
+
+###
+# =================================================================
+# Registry Credential Management Tests
+# =================================================================
+
+### Store Registry Credentials - Poridhi Registry
+POST {{baseUrl}}/api/v1/registry
+Content-Type: {{contentType}}
+
+{
+  "registry": "registry.poridhi.com",
+  "username": "poridhi-user",
+  "password": "super-secret-password"
+}
+
+### Store Registry Credentials - Docker Hub
+POST {{baseUrl}}/api/v1/registry
+Content-Type: {{contentType}}
+
+{
+  "registry": "docker.io",
+  "username": "dockerhub-user",
+  "password": "dockerhub-password"
+}
+
+### Store Registry Credentials - AWS ECR
+POST {{baseUrl}}/api/v1/registry
+Content-Type: {{contentType}}
+
+{
+  "registry": "123456789012.dkr.ecr.us-west-2.amazonaws.com",
+  "username": "AWS",
+  "password": "eyJwYXlsb2FkIjoiZ..."
+}
+
+### Get Registry Credentials - Poridhi
+GET {{baseUrl}}/api/v1/registry?registry=registry.poridhi.com
+
+### Get Registry Credentials - Docker Hub
+GET {{baseUrl}}/api/v1/registry?registry=docker.io
+
+### Get Registry Credentials - Not Found
+GET {{baseUrl}}/api/v1/registry?registry=nonexistent-registry.com
+
+### Get Registry Credentials - Missing Parameter
+GET {{baseUrl}}/api/v1/registry
+
+###
+# =================================================================
+# Deployment Push Tests
+# =================================================================
+
+### Push Single Deployment
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "app1.poridhi.com",
+    "app_name": "analytics-dashboard",
+    "docker_image": "registry.poridhi.com/analytics-dashboard:v1.0.0",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "API_URL=https://api.app1.poridhi.com",
+      "DB_HOST=postgres.internal"
+    ],
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+]
+
+### Push Multiple Deployments (Batch)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "app2.poridhi.com",
+    "app_name": "customer-portal",
+    "docker_image": "registry.poridhi.com/customer-portal:v2.1.0",
+    "port": 3001,
+    "env": [
+      "NODE_ENV=production",
+      "API_URL=https://api.app2.poridhi.com",
+      "REDIS_URL=redis://redis.internal:6379"
+    ]
+  },
+  {
+    "domain": "app3.poridhi.com",
+    "app_name": "inventory-system",
+    "docker_image": "registry.poridhi.com/inventory-system:latest",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "API_URL=https://api.app3.poridhi.com",
+      "KAFKA_BROKERS=kafka1:9092,kafka2:9092"
+    ]
+  },
+  {
+    "domain": "app4.poridhi.com",
+    "app_name": "order-service",
+    "docker_image": "registry.poridhi.com/order-service:v1.5.2",
+    "port": 3003,
+    "env": [
+      "NODE_ENV=production",
+      "API_URL=https://api.app4.poridhi.com",
+      "PAYMENT_SERVICE_URL=https://payments.internal"
+    ]
+  }
+]
+
+### Push Deployment with Minimal Fields
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "simple.poridhi.com",
+    "app_name": "simple-app",
+    "docker_image": "nginx:alpine",
+    "port": 80
+  }
+]
+
+### Push Deployment - Version Update (same app, new version)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "app1.poridhi.com",
+    "app_name": "analytics-dashboard",
+    "docker_image": "registry.poridhi.com/analytics-dashboard:v1.1.0",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "API_URL=https://api.app1.poridhi.com",
+      "DB_HOST=postgres.internal",
+      "NEW_FEATURE=enabled"
+    ],
+    "updated_at": "2024-01-15T11:00:00Z"
+  }
+]
+
+### Push Deployment - Development Environment
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "dev.poridhi.com",
+    "app_name": "test-service",
+    "docker_image": "registry.poridhi.com/test-service:dev-branch",
+    "port": 3010,
+    "env": [
+      "NODE_ENV=development",
+      "API_URL=https://dev-api.poridhi.com",
+      "DEBUG=true",
+      "LOG_LEVEL=debug"
+    ]
+  }
+]
+
+### Push Empty Array (Should Fail)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[]
+
+### Push Invalid Deployment (Missing Required Fields)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "invalid.com",
+    "app_name": "missing-fields"
+    // Missing docker_image and port
+  }
+]
+
+### Push Invalid Deployment (Invalid Port)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "invalid.com",
+    "app_name": "invalid-port",
+    "docker_image": "nginx:latest",
+    "port": 70000
+  }
+]
+
+### Push Invalid JSON
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+{
+  "invalid": "json structure"
+}
+
+###
+# =================================================================
+# Deployment Retrieval Tests
+# =================================================================
+
+### Get All Latest Deployments
+GET {{baseUrl}}/api/v1/deployments
+
+### Get Deployment Statistics
+GET {{baseUrl}}/api/v1/stats
+
+### Get Specific Deployment (Replace with actual ID from previous responses)
+GET {{baseUrl}}/api/v1/deployments/550e8400-e29b-41d4-a716-446655440000
+
+### Get Non-existent Deployment
+GET {{baseUrl}}/api/v1/deployments/00000000-0000-0000-0000-000000000000
+
+### Get Deployment with Invalid UUID
+GET {{baseUrl}}/api/v1/deployments/invalid-uuid
+
+###
+# =================================================================
+# Deployment Status Update Tests
+# =================================================================
+
+### Update Deployment Status to Deploying (Replace with actual ID)
+PATCH {{baseUrl}}/api/v1/deployments/550e8400-e29b-41d4-a716-446655440000/status
+Content-Type: {{contentType}}
+
+{
+  "status": "deploying"
+}
+
+### Update Deployment Status to Deployed (Replace with actual ID)
+PATCH {{baseUrl}}/api/v1/deployments/550e8400-e29b-41d4-a716-446655440000/status
+Content-Type: {{contentType}}
+
+{
+  "status": "deployed"
+}
+
+### Update Deployment Status to Failed (Replace with actual ID)
+PATCH {{baseUrl}}/api/v1/deployments/550e8400-e29b-41d4-a716-446655440000/status
+Content-Type: {{contentType}}
+
+{
+  "status": "failed"
+}
+
+### Update Deployment Status to Rolled Back (Replace with actual ID)
+PATCH {{baseUrl}}/api/v1/deployments/550e8400-e29b-41d4-a716-446655440000/status
+Content-Type: {{contentType}}
+
+{
+  "status": "rolled_back"
+}
+
+### Update Deployment Status - Invalid Status
+PATCH {{baseUrl}}/api/v1/deployments/550e8400-e29b-41d4-a716-446655440000/status
+Content-Type: {{contentType}}
+
+{
+  "status": "invalid_status"
+}
+
+### Update Deployment Status - Missing Status Field
+PATCH {{baseUrl}}/api/v1/deployments/550e8400-e29b-41d4-a716-446655440000/status
+Content-Type: {{contentType}}
+
+{
+  "wrong_field": "deployed"
+}
+
+###
+# =================================================================
+# Authentication Tests (Enable bearer_token in config first)
+# =================================================================
+
+### Push Deployment with Valid Bearer Token
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+Authorization: Bearer {{bearerToken}}
+
+[
+  {
+    "domain": "secure.poridhi.com",
+    "app_name": "secure-app",
+    "docker_image": "registry.poridhi.com/secure-app:latest",
+    "port": 443,
+    "env": [
+      "NODE_ENV=production",
+      "SSL_ENABLED=true"
+    ]
+  }
+]
+
+### Push Deployment with Invalid Bearer Token
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+Authorization: Bearer invalid-token
+
+[
+  {
+    "domain": "test.com",
+    "app_name": "test-app",
+    "docker_image": "test:latest",
+    "port": 3000
+  }
+]
+
+### Push Deployment without Authorization Header
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "test.com",
+    "app_name": "test-app",
+    "docker_image": "test:latest",
+    "port": 3000
+  }
+]
+
+### Store Registry Credentials with Auth
+POST {{baseUrl}}/api/v1/registry
+Content-Type: {{contentType}}
+Authorization: Bearer {{bearerToken}}
+
+{
+  "registry": "secure-registry.com",
+  "username": "secure-user",
+  "password": "secure-password"
+}
+
+###
+# =================================================================
+# Load Testing Scenarios
+# =================================================================
+
+### Large Batch Deployment (10 apps)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "microservice1.poridhi.com",
+    "app_name": "user-service",
+    "docker_image": "registry.poridhi.com/user-service:v1.0.0",
+    "port": 8001,
+    "env": ["NODE_ENV=production", "DB_NAME=users"]
+  },
+  {
+    "domain": "microservice2.poridhi.com",
+    "app_name": "auth-service",
+    "docker_image": "registry.poridhi.com/auth-service:v1.0.0",
+    "port": 8002,
+    "env": ["NODE_ENV=production", "DB_NAME=auth"]
+  },
+  {
+    "domain": "microservice3.poridhi.com",
+    "app_name": "product-service",
+    "docker_image": "registry.poridhi.com/product-service:v1.0.0",
+    "port": 8003,
+    "env": ["NODE_ENV=production", "DB_NAME=products"]
+  },
+  {
+    "domain": "microservice4.poridhi.com",
+    "app_name": "order-service",
+    "docker_image": "registry.poridhi.com/order-service:v1.0.0",
+    "port": 8004,
+    "env": ["NODE_ENV=production", "DB_NAME=orders"]
+  },
+  {
+    "domain": "microservice5.poridhi.com",
+    "app_name": "payment-service",
+    "docker_image": "registry.poridhi.com/payment-service:v1.0.0",
+    "port": 8005,
+    "env": ["NODE_ENV=production", "DB_NAME=payments"]
+  },
+  {
+    "domain": "microservice6.poridhi.com",
+    "app_name": "notification-service",
+    "docker_image": "registry.poridhi.com/notification-service:v1.0.0",
+    "port": 8006,
+    "env": ["NODE_ENV=production", "SMTP_HOST=smtp.poridhi.com"]
+  },
+  {
+    "domain": "microservice7.poridhi.com",
+    "app_name": "analytics-service",
+    "docker_image": "registry.poridhi.com/analytics-service:v1.0.0",
+    "port": 8007,
+    "env": ["NODE_ENV=production", "ELASTICSEARCH_URL=http://es.internal:9200"]
+  },
+  {
+    "domain": "microservice8.poridhi.com",
+    "app_name": "search-service",
+    "docker_image": "registry.poridhi.com/search-service:v1.0.0",
+    "port": 8008,
+    "env": ["NODE_ENV=production", "SOLR_URL=http://solr.internal:8983"]
+  },
+  {
+    "domain": "microservice9.poridhi.com",
+    "app_name": "cache-service",
+    "docker_image": "registry.poridhi.com/cache-service:v1.0.0",
+    "port": 8009,
+    "env": ["NODE_ENV=production", "REDIS_URL=redis://redis.internal:6379"]
+  },
+  {
+    "domain": "microservice10.poridhi.com",
+    "app_name": "file-service",
+    "docker_image": "registry.poridhi.com/file-service:v1.0.0",
+    "port": 8010,
+    "env": ["NODE_ENV=production", "S3_BUCKET=poridhi-files"]
+  }
+]
+
+###
+# =================================================================
+# Edge Cases and Special Scenarios
+# =================================================================
+
+### Push Deployment with Very Long Environment Variables
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "edge-case.poridhi.com",
+    "app_name": "config-heavy-app",
+    "docker_image": "registry.poridhi.com/config-app:latest",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "VERY_LONG_CONFIG=Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+      "JSON_CONFIG={\"database\":{\"host\":\"localhost\",\"port\":5432,\"name\":\"myapp\",\"ssl\":true},\"redis\":{\"host\":\"redis.internal\",\"port\":6379},\"features\":{\"feature_a\":true,\"feature_b\":false,\"feature_c\":{\"enabled\":true,\"config\":{\"timeout\":30000}}}}",
+      "API_KEYS=key1:value1,key2:value2,key3:value3,key4:value4,key5:value5"
+    ]
+  }
+]
+
+### Push Deployment with Unicode Characters
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "unicode.poridhi.com",
+    "app_name": "unicode-app-测试",
+    "docker_image": "registry.poridhi.com/unicode-app:latest",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "APP_NAME=Unicode Test App 🚀",
+      "DESCRIPTION=Тест приложения с Unicode символами",
+      "EMOJI_CONFIG=✅🔥💪🎉🚀"
+    ]
+  }
+]
+
+### Push Deployment with Special Characters in Environment
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "special.poridhi.com",
+    "app_name": "special-chars-app",
+    "docker_image": "registry.poridhi.com/special-app:latest",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "DATABASE_URL=postgresql://user:p@ssw0rd!@host:5432/db?sslmode=require",
+      "JWT_SECRET=myS3cr3t!@#$%^&*()_+Key",
+      "REGEX_PATTERN=^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    ]
+  }
+]
+
+###
+# =================================================================
+# Concurrent Request Simulation
+# =================================================================
+
+### Simulate GitHub Pipeline Push #1
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "pipeline1.poridhi.com",
+    "app_name": "frontend",
+    "docker_image": "registry.poridhi.com/frontend:build-123",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "BUILD_ID=123",
+      "GIT_COMMIT=abc123def456"
+    ]
+  }
+]
+
+### Simulate GitHub Pipeline Push #2 (Different App)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "pipeline2.poridhi.com",
+    "app_name": "backend",
+    "docker_image": "registry.poridhi.com/backend:build-124",
+    "port": 8080,
+    "env": [
+      "NODE_ENV=production",
+      "BUILD_ID=124",
+      "GIT_COMMIT=def456ghi789"
+    ]
+  }
+]
+
+### Simulate GitHub Pipeline Push #3 (Same App, New Version)
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "pipeline1.poridhi.com",
+    "app_name": "frontend",
+    "docker_image": "registry.poridhi.com/frontend:build-125",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "BUILD_ID=125",
+      "GIT_COMMIT=ghi789jkl012",
+      "HOTFIX=true"
+    ]
+  }
+]
+
+###
+# =================================================================
+# Testing Complete Workflow
+# =================================================================
+
+### Complete Workflow Test - Store Credentials
+POST {{baseUrl}}/api/v1/registry
+Content-Type: {{contentType}}
+
+{
+  "registry": "workflow-registry.com",
+  "username": "workflow-user",
+  "password": "workflow-password"
+}
+
+### Complete Workflow Test - Deploy App
+POST {{baseUrl}}/api/v1/push
+Content-Type: {{contentType}}
+
+[
+  {
+    "domain": "workflow.poridhi.com",
+    "app_name": "workflow-app",
+    "docker_image": "workflow-registry.com/workflow-app:v1.0.0",
+    "port": 3000,
+    "env": [
+      "NODE_ENV=production",
+      "VERSION=1.0.0"
+    ]
+  }
+]
+
+### Complete Workflow Test - Get Registry Credentials
+GET {{baseUrl}}/api/v1/registry?registry=workflow-registry.com
+
+### Complete Workflow Test - Check Deployment Status
+GET {{baseUrl}}/api/v1/deployments
+
+### Complete Workflow Test - Update to Deploying (Replace ID)
+PATCH {{baseUrl}}/api/v1/deployments/REPLACE_WITH_ACTUAL_ID/status
+Content-Type: {{contentType}}
+
+{
+  "status": "deploying"
+}
+
+### Complete Workflow Test - Update to Deployed (Replace ID)
+PATCH {{baseUrl}}/api/v1/deployments/REPLACE_WITH_ACTUAL_ID/status
+Content-Type: {{contentType}}
+
+{
+  "status": "deployed"
+}
+
+### Complete Workflow Test - Check Final Stats
+GET {{baseUrl}}/api/v1/stats
+
+###
+</rewritten_file>
